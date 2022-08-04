@@ -1,0 +1,49 @@
+"0","b <- brant(model_olr)
+"
+"2","Warning:"
+"2"," glm.fit: fitted probabilities numerically 0 or 1 occurred
+"
+"1","----------------------------------------------------"
+"1"," "
+"1","
+"
+"1","Test for		X2	df	probability"
+"1"," "
+"1","
+"
+"1","----------------------------------------------------"
+"1"," "
+"1","
+"
+"1","Omnibus			111.78	44	0"
+"1","
+"
+"1","fixed_acidity		5.53	4	0.24
+"
+"1","volatile_acidity	11.73	4	0.02
+"
+"1","citric_acid		7.44	4	0.11
+"
+"1","residual_sugar		11.59	4	0.02
+"
+"1","chlorides		5.9	4	0.21
+"
+"1","free_sulfur_dioxide	4.97	4	0.29
+"
+"1","total_sulfur_dioxide	18.88	4	0
+"
+"1","density			7.87	4	0.1
+"
+"1","pH			11.84	4	0.02
+"
+"1","sulphates		5.56	4	0.23
+"
+"1","alcohol			1.91	4	0.75
+"
+"1","----------------------------------------------------"
+"1"," "
+"1","
+
+"
+"1","H0: Parallel Regression Assumption holds
+"

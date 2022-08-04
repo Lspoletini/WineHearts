@@ -1,0 +1,2 @@
+"0","pc <- princomp(reds_train[,1:11],cor=T)"
+"0","plot(pc)"

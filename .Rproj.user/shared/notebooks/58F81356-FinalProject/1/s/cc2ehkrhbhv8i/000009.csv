@@ -1,0 +1,1 @@
+"0","ggplot(reds_train) + geom_histogram(aes(x = quality), stat=""count"") + ggtitle(""Quality Distribution"")"

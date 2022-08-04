@@ -1,0 +1,8 @@
+"0","reds_long <- reds_train[,1:11] %>%"
+"0","  pivot_longer(colnames(reds_train)[1:11]) %>% as.data.frame()"
+"0","ggplot(reds_long) + "
+"0","  geom_histogram(aes(x = value)) + "
+"0","  facet_wrap( ~ name, scales = ""free"") + "
+"0","  ggtitle(""Predictor Distributions"")"
+"2","`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+"

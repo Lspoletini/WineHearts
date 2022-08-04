@@ -1,0 +1,5 @@
+"0","n = nrow(reds)"
+"0","set.seed(42)"
+"0","Z <- sample(n,n/10)"
+"0","reds_test = reds[Z,]"
+"0","reds_train = reds[-Z,]"

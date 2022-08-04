@@ -1,0 +1,4 @@
+"0","ggplot(reds_long) + geom_histogram(aes(x = value)) + facet_wrap( ~ name, scales = ""free"")
+"
+"2","`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+"

@@ -1,0 +1,122 @@
+---
+title: "HW 4 - Coding Section"
+author: "Liam Spoletini"
+date: "6/7/2022"
+output: pdf_document
+---
+
+```{r message=FALSE, warning=FALSE}
+suppressPackageStartupMessages(library(MASS))
+suppressPackageStartupMessages(library(ISLR2))
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+# Question 2 
+## a.	  
+```{r}
+# k = 0 (Not Defective)
+pi_0 = 0.96
+mu_0 = 4.5
+variance = 0.2^2
+# k =1 (Defective)
+pi_1 = 0.04
+mu_1 = 4.2
+
+# Calculating Discriminant Function
+d_0_x = log(pi_0) + 4.3*mu_0/variance - (mu_0^2)/(2*variance)
+d_1_x = log(pi_0) + 4.3*mu_1/variance - (mu_1^2)/(2*variance)
+d_0_x
+d_1_x
+```
+
+This part is classified as *Defective*.  This is because the discriminant functions d_k(x) are one-to-one with the probability functions p_k(x) and the delta function corresponding to a k value of 1 is greater.
+
+## b.	This corresponds to Linear Discriminant Analysis (LDA).  This is because the variances do not vary between the two classes Defective and Not Defective.  If the variances were different and the ratio between n and p was sufficiently large, it would be QDA.
+
+# Question 3.	 
+## a.	 Do some EDA
+
+```{r}
+ggplot(data=Bikeshare) + 
+  geom_boxplot(aes(y=bikers, x = factor(season), fill = factor(season)))
+  # Add labels
+```
+Bikeshare use is dependent on season, but they are all skewed in the direction of extreme cases.
+
+```{r}
+ggplot(data=Bikeshare) + 
+  geom_boxplot(aes(y=bikers, x=factor(hr)))
+```
+You can see the effect of commutes here.  People used bikeshare bikes to get to and from work.
+
+```{r}
+ggplot(data=Bikeshare) + 
+  geom_boxplot(aes(y=bikers, x = factor(weekday)))
+```
+```{r}
+ggplot(data=Bikeshare) + 
+  geom_boxplot(aes(y=bikers, x = factor(workingday)))
+```
+
+```{r}
+ggplot(data=Bikeshare) + 
+  geom_boxplot(aes(y=bikers, x = factor(holiday)))
+```
+None of these are as big of a difference as I was expecting!
+
+
+## b. 
+```{r}
+model <- glm(bikers ~ factor(season) + day + factor(hr) + factor(weekday) +  workingday + weathersit, data= Bikeshare, family = "poisson")
+summary(model)$coef
+```
+
+- It looks like all the variables are significant. (The summary(model) output is very long, but you can see how large |Z| is for all of these variables).
+
+- I decided to use *weekday* as a factor.  This is because the two weekend values are 0 and 6, which -- despite being the most similar days-- are the furthest apart from each other.  It doesn't make sense to consider this a numerical variable.
+
+- I also decided to use *season* and *hr* as factors.  Since these are both cyclical, they encounter the problem of having the first and last element being very different despite being adjacent.  Following this logic, I would use day as a factor as well, but factorizing day leads to an issue with the ratio of n observations and p predictors. 
+
+- *weathersit* is a factor variable by default, and *workingday* is a binary variable already.
+
+## c.
+```{r}
+newdata1 = data.frame(season =  c(1,1,1), 
+                      day = c(45,45,45),
+                      hr = c(11, 17, 21),
+                      weekday = c(1,1,1),
+                      workingday = c(1,1,1),
+                      weathersit = c("clear", "clear", "clear"))
+predict.glm(model, newdata1, type="response")
+```
+
+```{r}
+# Real Numbers
+Bikeshare %>%
+  filter(day == 45,
+         hr %in% c(11, 17, 21)) %>%
+  select (day, hr, bikers)
+```
+
+
+```{r}
+newdata2 = data.frame(season =  c(3,3,3), 
+                      day = c(185,185,185),
+                      hr = c(11, 17, 21),
+                      weekday = c(1,1,1),
+                      workingday = c(0,0,0),
+                      weathersit = c("clear", "clear", "clear"))
+predict.glm(model, newdata2, type="response")
+```
+
+```{r}
+# Real Numbers
+Bikeshare %>%
+  filter(day == 185,
+         hr %in% c(11, 17, 21)) %>%
+  select (day, hr, bikers)
+```
+
+These predictions are not very far off from the truth!  
+The model consistently underpredicts the 6pm bikers.
+Even though the actual weather was cloudy/misty for two times in the July 4th prediction, the model still greatly underpredicted bikers for noon and 10pm.

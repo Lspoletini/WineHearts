@@ -1,0 +1,2 @@
+"0","res <- cor(cbind(reds_train[,1:11], as.numeric(reds_train$quality)))"
+"0","corrplot::corrplot(res, method = ""shade"", type=""lower"", tl.col = ""black"")"

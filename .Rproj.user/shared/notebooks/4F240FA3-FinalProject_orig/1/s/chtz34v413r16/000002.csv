@@ -1,0 +1,11 @@
+"0","pred <- prediction(as.numeric(yhat==1),as.numeric(heart_test$Number==1))"
+"0","perf <- performance(pred,""auc"")@y.values"
+"0","perf"
+"1","[[1]]
+"
+"1","[1]"
+"1"," 0.8406863"
+"1","
+"
+"1","
+"

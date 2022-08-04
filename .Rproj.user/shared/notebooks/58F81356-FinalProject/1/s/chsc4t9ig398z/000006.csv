@@ -1,0 +1,5 @@
+"0","sum((5.5 - as.numeric(testdf$quality))^2)/nrow(testdf)"
+"1","[1]"
+"1"," 4.312893"
+"1","
+"

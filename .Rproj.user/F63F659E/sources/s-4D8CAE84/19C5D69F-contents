@@ -1,0 +1,98 @@
+# PCR.r
+# Principal Components and Partial Least Squares Regression Methods on the Hitters data set
+
+# Overall analysis goals: Prediction of player salary. 
+
+library(ISLR2) # for the data set Hitters featuring Major League Baseball Data from '86-'87
+library(pls) # for Principal Components Regression
+
+###########################
+## Load and process data ##
+###########################
+help(Hitters)
+names(Hitters)
+dim(Hitters)
+sum(is.na(Hitters)) # 59 individuals are missing some data
+apply(is.na(Hitters),2,sum) # by variable - all missing are on salary!
+Hitters <- na.omit(Hitters) # removes those with missing data
+dim(Hitters)
+sum(is.na(Hitters))
+summary(Hitters)
+head(Hitters)
+
+###################################
+# Principal Components Regression #
+###################################
+# let's first investigate our principal components
+
+x <- model.matrix(Salary ~ ., Hitters)[, -1]  # Design matrix minus intercept
+head(x) # removed intercept term
+y <- Hitters$Salary
+
+pc <- princomp(x)
+summary(pc) 
+pc$center # note that princomp() mean centers all of the variables first as interest is in variation right now
+apply(x,2,mean)
+# Z1 the first PC contains 97.4% of the total variation of X variables. 
+# Z1 and Z2 together contain 98.8%. 
+plot(pc) # Screeplot displays all components
+
+prcomp(x) #  
+pc.x <- prcomp(x)
+cf.x <- pc.x$rotation # extract the coefficients
+cf.x[,1] # coefficients of Z1
+sum(cf.x[,1]^2)
+
+head(x)
+data.frame(coef1=cf.x[,1],obs1=x[1,],Cobs1=x[1,]-pc$center,prod=cf.x[,1]*(x[1,]-pc$center))
+sum(cf.x[,1]*(x[1,]-pc$center))
+head(pc$scores)
+
+# Note that these come from the singular value decomposition (SVD) of x
+sx <- svd(scale(x,scale=F))  # here x is mean centered
+names(sx)
+cbind(sx$v[,1],cf.x[,1])
+head(sx$v)
+head(cf.x)
+
+# The first principal component contains a huge portion of the total variation of
+# the X variables, and it is dominated by CAtBat - which after looking at the
+# actual values of the variables in the data set makes sense as CAtBat takes on 
+# the highest values of all variables
+head(Hitters)
+apply(x,2,mean)
+
+# For this reason, typically the X variables are standardized first via cor=T
+pc <- princomp(x,cor=T)
+summary(pc)
+# Z1 the first PC contains 39.3% of the total variation of X variables. 
+# Z1 and Z2 together contain 60.2%. 
+plot(pc) # Screeplot displays all components
+
+# this can be done through center=TRUE and scale=TRUE in the pcr() function
+
+# Principal Components Regression
+pcr.fit <- pcr(Salary ~ ., data = Hitters, scale = TRUE, center=TRUE)
+summary(pcr.fit)
+
+# with cross-validation (by default is 10-fold) # validation = "CV" use = "LOO" for leave-one-out
+set.seed(2)
+pcr.fit <- pcr(Salary ~ ., data = Hitters, scale = TRUE, center=TRUE, validation = "CV")
+summary(pcr.fit) 
+# The CV score is provided for each possible number of components, ranging from 0 to 19.
+# Root MSE for CV and an adjustment to CV are presented. 
+validationplot(pcr.fit, val.type="MSEP")
+# Note that CV is min (339.2) when use 18 components. This is similar to the least squares using all 19 variables.
+# But, the first component has RMSE of 351.9 which is not too different. This suggests the model with just Z1 
+# might suffice. 
+
+####################################
+# Partial Least Squares Regression #
+####################################
+set.seed(2)
+pls.fit <- plsr(Salary ~ ., data = Hitters, scale = TRUE, center=TRUE, validation="CV")
+summary(pls.fit)
+validationplot(pls.fit, val.type="MSEP") # 12 components has minimum but 8 isn't too far off 
+
+fit1 <- lm(Salary ~ . - Salary, Hitters) 
+summary(fit1) # note the multiple R-squared 

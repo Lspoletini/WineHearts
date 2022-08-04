@@ -1,0 +1,7 @@
+"0","plot(as.numeric(tdf$quality), train_guesses-as.numeric(tdf$quality), pch=19,"
+"0","     main =""Residual Plot"", xlab = ""Quality"", ylab= ""Resiudals"")"
+"2","Warning in train_guesses - as.numeric(tdf$quality) :"
+"2","
+ "
+"2"," longer object length is not a multiple of shorter object length
+"

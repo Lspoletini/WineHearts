@@ -1,0 +1,241 @@
+---
+title: "Lab 3"
+author: "Liam Spoletini"
+date: "6/4/2022"
+output: pdf_document
+---
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(ROCR))
+suppressPackageStartupMessages(library(neighbr))
+d1 <- read_csv("~/Documents/MSDS/Summer-627/Datasets/data1.csv",
+               show_col_types = F)
+d2 <- read_csv("~/Documents/MSDS/Summer-627/Datasets/data2.csv",
+               show_col_types = F)
+d3 <- read_csv("~/Documents/MSDS/Summer-627/Datasets/data3.csv",
+               show_col_types = F)
+```
+
+# Question 1
+
+## a.
+
+### i.
+```{r}
+set.seed(20)
+     Z <- sample(100,50)
+     train_d1 <- d1[sort(Z),]
+     test_d1 <- d1[-sort(Z),]
+m1 <- lm(y ~ x, data=train_d1)
+train_MSE = (1/50)*sum(m1$residuals^2)
+newdata = data.frame(x = test_d1$x)
+test_MSE = (1/50)*sum((predict(m1, newdata) - test_d1$y)^2)
+
+train_MSE
+test_MSE
+```
+
+### ii.
+```{r}
+m2 <- lm(y ~ x + I(x^2) + I(x^3), data=train_d1)
+train_MSE = (1/50)*sum(m2$residuals^2)
+newdata = data.frame(x = test_d1$x)
+test_MSE = (1/50)*sum((predict(m2, newdata) - test_d1$y)^2)
+
+train_MSE
+test_MSE
+```
+
+### iii.
+
+There is a slight decrease in training MSE between the linear regression and cubic regression models, but a slight increase in test MSE.  This tracks because the training MSE is always going to decrease with additional variables, while the test MSE is not guaranteed to decrease.
+
+## b.
+
+### data2.csv
+```{r}
+set.seed(20)
+     Z <- sample(100,50)
+     train_d2 <- d2[sort(Z),]
+     test_d2 <- d2[-sort(Z),]
+m2 <- lm(y ~ x, data=train_d2)
+train_MSE = (1/50)*sum(m2$residuals^2)
+newdata = data.frame(x = test_d2$x)
+test_MSE = (1/50)*sum((predict(m2, newdata) - test_d2$y)^2)
+
+train_MSE
+test_MSE
+```
+```{r}
+m2 <- lm(y ~ x + I(x^2) + I(x^3), data=train_d2)
+train_MSE = (1/50)*sum(m2$residuals^2)
+newdata = data.frame(x = test_d2$x)
+test_MSE = (1/50)*sum((predict(m2, newdata) - test_d2$y)^2)
+
+train_MSE
+test_MSE
+```
+
+### data3.csv
+
+```{r}
+set.seed(20)
+     Z <- sample(100,50)
+     train_d3 <- d3[sort(Z),]
+     test_d3 <- d3[-sort(Z),]
+m3 <- lm(y ~ x, data=train_d3)
+train_MSE = (1/50)*sum(m3$residuals^2)
+newdata = data.frame(x = test_d3$x)
+test_MSE = (1/50)*sum((predict(m3, newdata) - test_d3$y)^2)
+
+train_MSE
+test_MSE
+```
+```{r}
+m3 <- lm(y ~ x + I(x^2) + I(x^3), data=train_d3)
+train_MSE = (1/50)*sum(m3$residuals^2)
+newdata = data.frame(x = test_d3$x)
+test_MSE = (1/50)*sum((predict(m3, newdata) - test_d3$y)^2)
+
+train_MSE
+test_MSE
+```
+
+
+
+## c.
+
+The data from data1.csv is the only data whose test MSE got higher with the cubic regression model; this tells me it was overfitting the model compared to the simple linear regression, which could only reasonably be true for the yellow line.  A simple linear model is closest to the underlying f(x) in this situation, and additional terms could cause the test MSE to increase.  
+
+The next most obvious conclusion is that the true relationship behind the data3.csv data is the black curve. There is a huge reduction in both training AND testing MSE between the simple linear and cubic regression models, indicating that overfitting is not occurring, and that the true f(x) is much closer to a cubic model for data3.csv.
+
+By process of elimination, the data from data2.csv is therefore most likely associated with the green curve. This is a plausible conclusion because there is a moderate decrease in train and test MSE between the simple linear and cubic models. The green curve is less extreme than the black curve, where I would expect the inclusion of higher-order terms to dramatically increase the variance explained by the model.  Since this does not happen for data2.csv, and the data1.csv numbers show overfitting, it makes sense for data2.csv to be associated with the green curve.
+
+# Question 2
+
+```{r warnings = F}
+suppressPackageStartupMessages(library(ISLR2))
+data("Weekly")
+```
+
+## a.
+```{r}
+model <- glm(Direction ~ . - Today - Year, data=Weekly, family=binomial)
+summary(model)
+```
+
+Lag2 is the only significant variable.
+
+## b.
+
+```{r}
+class <- data.frame(yhat = (model$fitted.values >=0.5),y = 
+                      (Weekly$Direction == "Up"))
+table(class)
+```
+
+With the Weekly dataset, the logistic regression confusion matrix shows an imbalance between false negative and false negatives.  The model is extremely more likely to predict a True value
+
+## c. 
+
+```{r}
+train.Weekly <- Weekly %>%
+  filter(Year <= 2008)
+test.Weekly <- Weekly %>%
+  filter(Year > 2008)
+model <- glm(Direction ~ Lag2, data=train.Weekly, family = "binomial")
+
+newdata <- data.frame(Lag2 = test.Weekly$Lag2)
+guesses <- predict(model, newdata)
+class <- data.frame(yhat = as.numeric(guesses >=0.5),y = (test.Weekly$Direction == "Up"))
+table(class)
+```
+
+```{r}
+# Fraction of Correct Predictions
+(41 + 5)/ length(test.Weekly$Lag2)
+```
+
+44.23%, Worse than guessing?
+## d. 
+
+```{r}
+pred <- prediction(guesses, test.Weekly$Direction)
+perf <- performance(pred, "tpr","fpr")
+plot(perf, colorize=T)
+```
+
+```{r}
+performance(pred,measure="auc")@y.values
+```
+
+The Area Under the Curve is 0.546321.  It is not much better than random chance at predicting the correct class
+
+## e.
+
+```{r}
+# remove Volume, Today, Year
+
+train.Weekly %>%
+  select(-Volume, -Today, -Year) -> train.Weeklyknn
+
+test.Weekly %>%
+  select(-Volume, -Today, -Year, -Direction) -> test.Weeklyknn
+
+k_vals <- seq(10,25, by=5)
+best_acc = 0
+best_k = 5
+# for (k in k_vals){
+#   mk <- knn(train_set = train.Weeklyknn,
+#       test_set = test.Weeklyknn,
+#       k = k, 
+#       categorical_target = "Direction",
+#       comparison_measure = "euclidean"
+#       )
+#   acc = sum(factor(test.Weekly$Direction == "Up") == factor(mk$test_set_scores == "Up"))     / length(test.Weekly$Direction)
+#   if(acc > best_acc){
+#     best_acc = acc
+#     best_k = k
+#   }
+# }
+
+# k=20 performed best, retrying with values 16-24
+# k_vals <- seq(16,24, by=1)
+# best_acc = 0
+# best_k = 5
+# for (k in k_vals){
+#   mk <- knn(train_set = train.Weeklyknn,
+#       test_set = test.Weeklyknn,
+#       k = k, 
+#       categorical_target = "Direction",
+#       comparison_measure = "euclidean"
+#       )
+#   acc = sum(factor(test.Weekly$Direction == "Up") == factor(mk$test_set_scores == "Up"))     / length(test.Weekly$Direction)
+#   if(acc > best_acc){
+#     best_acc = acc
+#     best_k = k
+#   }
+# }
+
+# The best K was 20, but it takes forever to train all of those KNNs, so this is 
+# me jumping to the answer
+mk <- knn(train_set = train.Weeklyknn,
+      test_set = test.Weeklyknn,
+      k = 20,
+      categorical_target = "Direction",
+      comparison_measure = "euclidean"
+      )
+
+
+```
+
+```{r}
+class <- data.frame(yhat = (mk$test_set_scores == "Up"),y = (test.Weekly$Direction == "Up"))
+table(class)
+```
+```{r}
+acc = sum(factor(test.Weekly$Direction == "Up") == factor(mk$test_set_scores == "Up"))     / length(test.Weekly$Direction)
+acc
+```
+
+I don't think you can generate an ROC curve or an AUC score for KNN when predictions are based on majority votes and don't have a probability score attached, so the total prediction accuracy is the measure I'll go with here.  58.7% is better than 44%!

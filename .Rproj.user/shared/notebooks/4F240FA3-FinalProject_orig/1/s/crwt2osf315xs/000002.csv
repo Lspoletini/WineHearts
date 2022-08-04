@@ -1,0 +1,5 @@
+"0","n = nrow(heart_data)"
+"0","set.seed(42)"
+"0","Z <- sample(n,n/10)"
+"0","heart_test = heart_data[Z,]"
+"0","heart_train = heart_data[-Z,]"

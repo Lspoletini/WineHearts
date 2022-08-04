@@ -1,0 +1,5 @@
+"0","sum((as.numeric(predict(model_olr_final, newdata = testdf)) - as.numeric(testdf$quality))^2)/nrow(testdf)"
+"1","[1]"
+"1"," 0.509434"
+"1","
+"

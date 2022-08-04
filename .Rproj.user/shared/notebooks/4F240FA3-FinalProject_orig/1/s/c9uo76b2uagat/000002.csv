@@ -1,0 +1,20 @@
+"0","rg2 <- list(kernel=c(""linear"",""polynomial"",""radial"",""sigmoid""), cost=seq(5, 15, 0.5))"
+"0","svmt <- tune(svm, factor(Number) ~ .,data=heart_train, ranges = rg2)"
+"0","svmt"
+"1","
+Parameter tuning of "
+"1",""
+"1","‘svm’"
+"1",""
+"1",":
+
+"
+"1","- sampling method:"
+"1"," "
+"1","10-fold cross validation"
+"1"," "
+"1","
+
+"
+"1","- best parameters:
+"

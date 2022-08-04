@@ -1,0 +1,2 @@
+"0","plot(1:Q, CV_plot_a, type = ""b"", pch=19, main = ""10-fold CV for Ordinal LR and Multinomial LR"","
+"0","     ylab = ""Prediction Error Rate"", xlab = ""# of Principal Components"")"

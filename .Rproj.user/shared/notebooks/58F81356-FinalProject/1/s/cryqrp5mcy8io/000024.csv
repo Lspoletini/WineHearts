@@ -1,0 +1,2 @@
+"0","plot(as.numeric(tdf$quality), 5.5-as.numeric(tdf$quality), pch=19,"
+"0","     main =""Residual Plot"", xlab = ""Quality"", ylab= ""Resiudals"", col=""red"")"

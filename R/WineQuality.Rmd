@@ -1,5 +1,5 @@
 ---
-title: "Final Project"
+title: "Wine Quality"
 author: "Liam Spoletini"
 date: "6/8/2022"
 output: pdf_document
@@ -12,7 +12,7 @@ Dataset Name: **Wine Quality**
 Response Variable: **Quality** (Scale of 1-10, actual range of 3-8)
 
 Predictor Variables:
-1. fixed acidity       
+1. fixed acidity       ØØ
 2. volatile acidity    
 3. citric acid         
 4. residual sugar      
@@ -31,7 +31,7 @@ Number of Missing Values: **0**
 ## Setup and Exploratory Data Analysis
 
 ### Setup
-```{r}
+```{r warning=FALSE}
 source(here::here("R", "Setup.R")) # See Setup.R for details
 ```
 
@@ -46,7 +46,7 @@ reds_train = reds[-Z,]
 
 ### Graphs
 ```{r warning=FALSE}
-ggplot(reds_train) + geom_histogram(aes(x = quality), stat="count") + ggtitle("Quality Distribution")
+ggplot(reds_train) + geom_histogram(aes(x = quality), stat="count", fill = "deeppink4") + ggtitle("Quality Distribution")
 ```
 
 The response variable has 6 distinct values that range from 3 to 8 (the full dataset and the training data set have this in common.)  This data is ordinal in nature, but there are many training instances available, so we may get good performance by using considering it to be continuous data.
@@ -55,7 +55,7 @@ The response variable has 6 distinct values that range from 3 to 8 (the full dat
 reds_long <- reds_train[,1:11] %>%
   pivot_longer(colnames(reds_train)[1:11]) %>% as.data.frame()
 ggplot(reds_long) + 
-  geom_histogram(aes(x = value)) + 
+  geom_histogram(aes(x = value), fill = "deeppink4") + 
   facet_wrap( ~ name, scales = "free") + 
   ggtitle("Predictor Distributions")
 ```
@@ -130,6 +130,7 @@ All ordered logit models using 1-10 principal components failed the Brant-Wald t
 ### Tuning: Selecting Number of Principal Components
 
 #### 10-Fold Cross-Validation
+
 ```{r message=FALSE, warning=FALSE}
 # Cross Validation: # of PC's
 
@@ -162,7 +163,7 @@ for(i in 1:Q){
     model_multi <- nnet::multinom(quality ~ . , data = tdf, trace = F)
     
     CV_tmp_a[k] <- sum(predict(model_multi, newdata= vdf) != reds_train_val$quality) / nrow(vdf)
-    CV_tmp_b[k] <- sum((as.numeric(predict(model_multi, newdata = vdf)) - as.numeric(vdf$quality))^2)
+    CV_tmp_b[k] <- sum(((as.numeric(predict(model_multi, newdata = vdf))+2) - (as.numeric(vdf$quality)+2))^2)
   }
   CV_plot_a[i] = mean(CV_tmp_a)
   CV_plot_b[i] = mean(CV_tmp_b)/nrow(vdf)
@@ -179,7 +180,7 @@ mtext(side=4, "MSE", col = "red", line = -2)
 ```
 To assess overfitting in this approach, I used both the prediction error rate (whether or not the correct class was predicted) and the mean squared error that results from treating quality as a ordinal/continuous variable after the fact.  Both methods yielded a minimum CV error with 3 principal components, but each the errors do not increase drastically as additional principal components are considered.  I will use this graph to tune the principal component number to 3.
 
-### Comparison Back to True Ordinal Logistic Regression
+### Comparison to True Ordinal Logistic Regression
 Some [suggest](https://www.fharrell.com/post/po/) that failing the satisfy the proportional odds requirement does not doom that method entirely, so I want to run through it quickly to see if the cross-validation scores are comparable
 
 ```{r}
@@ -211,7 +212,7 @@ for(i in 1:Q){
     model_olr <- MASS::polr(quality ~ ., data=tdf) # Only difference from above block
     
     CV_tmp_a_olr[k] <- sum(predict(model_olr, newdata= vdf) != vdf$quality) / nrow(vdf)
-    CV_tmp_b_olr[k] <- sum((as.numeric(predict(model_olr, newdata = vdf)) - as.numeric(vdf$quality))^2)
+    CV_tmp_b_olr[k] <- sum(((as.numeric(predict(model_olr, newdata = vdf))+2) - (as.numeric(vdf$quality)+2))^2)
  
   }
   CV_plot_a_olr[i] = mean(CV_tmp_a_olr)
@@ -235,8 +236,55 @@ legend(7,.7,legend = c("Multinomial", "Ordinal"), col = c("black", "blue"), lty 
 
 When comparing the ordinal logistic regression model to the multinomial logistic regression model, I found that there is a new principal component number (10) at which the prediction error rate is minimized. Also, the number of principal components that minimizes the MSE is the same (3), but is slightly lower for the ordinal model.  This difference of around 0.006 does not support a wide difference in predictive ability, and I believe they would perform similarly on the test dataset.
 
-## Testing
+### Comparison to Multivariable Linear Regression
+```{r}
+Q=11
+CV_plot_b_linreg = {}
+for(i in 1:Q){
+  CV_tmp_b_linreg <- {}
+  for(k in 1:10){
+    reds_train_train = reds_train[!(ids == k),]
+    reds_train_val = reds_train[ids == k,]
+    pc_t <- princomp(reds_train_train[,1:11],cor=T)
+    pct_scores <- as.data.frame(pc_t$scores[,1:i])
+    pc_v <- princomp(reds_train_val[,1:11],cor=T)
+    pcv_scores <- as.data.frame(pc_v$scores[,1:i])
+    train_df <- data.frame(pc_t$scores[,1:i])
+    t_names = {}
+    for(q in 1:i){
+      t_names = append(t_names, paste("pc", q, sep=""))
+    }
+    
+    names(pct_scores) <- t_names
+    names(pcv_scores) <- t_names
+    
+    tdf <- cbind(pct_scores, quality = reds_train_train$quality)
+    vdf <- cbind(pcv_scores, quality = reds_train_val$quality)
+    
+    model_linreg <- lm(as.numeric(quality) + 2 ~ ., data=tdf) 
+    
+    CV_tmp_b_linreg[k] <- sum((as.numeric(predict(model_linreg, newdata = vdf)) - (as.numeric(vdf$quality)+2))^2)
+ 
+  }
+  CV_plot_b_linreg[i] = mean(CV_tmp_b_linreg)/nrow(vdf)
+}
+```
 
+```{r}
+plot(1:Q, CV_plot_b, type = "b", pch=19, main = "10-fold CV for Ordinal LogReg, Multinomial LogReg, and Linear Regression",
+     ylab = "MSE", xlab = "# of Principal Components")
+legend(7,.7,legend = c("Multinomial", "Ordinal", "Linreg"), col = c("black", "blue", "red"), lty = 1:1)
+
+par(new=T)
+plot(1:Q, CV_plot_b_olr, type = "b", col = "blue", ylab="", xlab = "", axes=F, pch=19)
+par(new=T)
+plot(1:Q, CV_plot_b_linreg, type = "b", col = "red", ylab="", xlab = "", axes=F, pch=19)
+
+```
+
+At 3 principal components, the ordinallogistic regression, multinomial logistic regression, and linear regression perform almost exactly the same with regards to MSE, and 3 principal components is the minimum of this graph.
+
+## Testing
 ```{r}
 # Train
 pc_t <- princomp(reds_train[,1:11],cor=T)
@@ -253,12 +301,18 @@ names(pctest_scores) <- c("pc1","pc2", "pc3")
 
 testdf <- cbind(pctest_scores, quality=reds_test$quality)
 
-train_guesses <- as.numeric(predict(model_olr_final, newdata=testdf))
-plot(as.numeric(reds_train$quality), train_guesses-as.numeric(reds_train$quality), pch=19,
-     main ="Residual Plot", xlab = "Quality", ylab= "Resiudals")
+train_guesses <- as.numeric(predict(model_olr_final, newdata=tdf)) + 2
+plot(train_guesses, train_guesses-(as.numeric(reds_train$quality)+2), pch=19,
+     main ="Residual Plot- Training Data", xlab = "Fitted Values", ylab= "Resiudals")
 ```
 ```{r}
-sum((as.numeric(predict(model_olr_final, newdata = testdf)) - as.numeric(testdf$quality))^2)/nrow(testdf)
+test_guesses <- as.numeric(predict(model_olr_final, newdata=testdf)) + 2
+plot(test_guesses, test_guesses-(as.numeric(reds_test$quality) + 2), pch=19,
+     main ="Residual Plot - Test Data", xlab = "Fitted Values", ylab= "Resiudals")
+```
+
+```{r}
+sum(((as.numeric(predict(model_olr_final, newdata = testdf)) + 2) - (as.numeric(testdf$quality) + 2) )^2)/nrow(testdf)
 ```
 
 On average, the squared residual is around 0.46, interestingly lower than the average 10-fold CV error from earlier.
@@ -266,178 +320,40 @@ On average, the squared residual is around 0.46, interestingly lower than the av
 How is this compared to guessing the median every time?
 
 ```{r}
-sum((5.5 - as.numeric(testdf$quality))^2)/nrow(testdf)
+sum((5.5 - as.numeric(testdf$quality)+2)^2)/nrow(testdf)
 ```
-
 Better!
+
+### Repeat and with Multinomial and Linear Regression
 ```{r}
-plot(as.numeric(tdf$quality), train_guesses-as.numeric(tdf$quality), pch=19,
-     main ="Residual Plot", xlab = "Quality", ylab= "Resiudals")
-par(new=T)
-plot(as.numeric(tdf$quality), 5.5-as.numeric(tdf$quality), pch=19,
-     main ="Residual Plot", xlab = "Quality", ylab= "Resiudals", col="red")
-```
+# Train
+model_olr_final <- MASS::polr(quality ~ ., data=tdf)
+model_linreg_final <- lm(as.numeric(quality) + 2 ~ ., data = tdf)
+model_multinom_final <- multinom(quality ~ ., data = tdf, trace = F)
+# Test
 
 
-# Part 2: Hearts
+test_guesses_linreg <- predict(model_linreg_final, newdata=testdf)
+test_guesses_multinom <- as.numeric(predict(model_multinom_final, newdata=testdf)) + 2
 
-## Overview
-
-### Dataset  
-Name: **Heart Disease Data set**  
-
-Response Variable:  
-**Angiographic disease status**:  
-0: <50% diameter narrowing  
-1: >50% diameter narrowing  
-
-Predictor Variables (13 total):  
-Categorical:  
-1. Sex  
-0 = female  
-1 = male  
-
-2. Chest Pain Type (cp)  
-1 = typical angina 
-2 = atypical angina 
-3 = non-anginal pain 
-4 = asymptomatic 
-
-3. Fasting Blood Sugar (fbs)  
-0 = fbs < 120 mg/dl
-1 = fbs > 120 mg/dl
-
-4. Resting Electrocardiographic results (restecg)  
-0 = normal  
-1 = having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of > 0.05 mV)   
-2 = showing probable or definite left ventricular hypertrophy by Estes' criteria   
-
-5. Exercise-Induced Angina (exang)  
-0 = no  
-1 = yes  
-
-6. The slope of the peak exercise ST segment  (slope)  
-1 = upsloping   
-2 = flat   
-3 = downsloping   
-
-8. thal  
-3 = normal  
-6 = fixed defect  
-7 = reversible defect   
-
-Quantitative
-
-1. Age  
-2. resting blood pressure (in mm Hg on admission to the hospital) (trestbps)  
-3. serum cholestoral in mg/dl (chol)  
-4. maximum heart rate achieved (thalach)  
-5. ST depression induced by exercise relative to rest (oldpeak)  
-6. Number of major vessels (0-3) colored by flourosopy (ca)  
-
-## Missing Data
-```{r warning=FALSE}
-
-heart_data %>% 
-  mutate(ca = as.numeric(ca), thal = as.numeric(thal)) %>% 
-  filter(!is.na(ca), !is.na(thal)) -> heart_data
-dim(heart_data)
-
-
-```
-There are 297 instances without NA's.
-
-
-### Train/Test Split
-
-```{r}
-n = nrow(heart_data)
-set.seed(42)
-Z <- sample(n,n/10)
-heart_test = heart_data[Z,]
-heart_train = heart_data[-Z,]
-```
-
-## Exploratory Data Analysis
-
-```{r}
-ggplot(heart_train) + 
-  geom_point(aes(x= thalach, y = chol, color=factor(Number)))
+plotdf <- tibble(test_guesses, test_guesses_linreg, test_guesses_multinom,
+                 r = test_guesses - (as.numeric(reds_test$quality) + 2),
+                 r_linreg = test_guesses_linreg - (as.numeric(reds_test$quality) + 2),
+                 r_multinom = test_guesses_multinom - (as.numeric(reds_test$quality) + 2))
+ggplot(plotdf) +
+  geom_point(aes(x=test_guesses, y = r), color = "blue") + 
+  geom_point(aes(x=test_guesses_linreg, y = r_linreg), color = "red") +
+  geom_point(aes(x=test_guesses_multinom, y = r_multinom), color = "black")
 ```
 ```{r}
-ggplot(heart_train) + 
-  geom_point(aes(x= trestbps, y = chol, color=factor(Number)))
+results = data.frame(ordinal_reg_mse = sum((test_guesses - (as.numeric(testdf$quality) + 2) )^2)/nrow(testdf),
+                     linear_reg_mse = sum((test_guesses_linreg - (as.numeric(testdf$quality) + 2) )^2)/nrow(testdf),
+                     multinom_reg_mse = sum((test_guesses_multinom - (as.numeric(testdf$quality) + 2) )^2)/nrow(testdf))
+results
 ```
 
-```{r}
-ggplot(heart_train) + 
-  geom_point(aes(x= thalach, y = trestbps, color=factor(Number)))
-```
-The data do not seem to be easily separable when looking at a low number of predictor variables.  Above are a subset of three such combinations of quantitative variables. It is possible that the data is still closer to linearly separable using more of the predictor variables at a time.  
+## Conclusion
 
-## Machine Learning Methods: **Support Vector Machine**
-
-### Formal Representation of Method:
-
-Support Vector Machine classifiers rely on the idea of a hyperplane that divides the p-dimensional feature space.  This hyperplane is chosen to maximize the margin (the distance between the hyperplane and the training instances in the feature space).  In the case of Support Vector Machines, this hyperplane contains soft margins, and the cost function to be minimzed is a sum of all the violations of the soft margins.  The maximum sum of the cost function itself is a value that can be tuned to produce stricter or more lenient boundaries. 
-
-### Assumptions/Considerations
-
-The textbook doesn't mention any assumptions made about the data that are necessary for SVM.
-
-## Tuning Parameter
-
-The tuning parameter for Support Vector Machines is C, which is the maximum allowed sum of violations to the margin.  A lower value of C allows for fewer violations, and a higher value of C allows for more violations.  The type of kernel is another way we can tune the model.  If we transform the original data using a kernel, the SVM can create a boundary that is linear in the new feature space but nonlinear in the original feature space.  
-
-## Implementation: SVM
-
-Finding the optimal kernel and C combination:
-
-Using 10-fold Cross-Validation on the training set
-```{r}
-set.seed(42)
-rg <- list(kernel=c("linear","polynomial","radial","sigmoid"), cost=c(0.001, 0.01, 0.1, 1, 5, 10, 100))
-svmt <- tune(svm, factor(Number) ~ .,data=heart_train, ranges = rg)
-svmt
-```
-
-The optimal C in this grid was 10, with a linear kernel.
-
-```{r}
-rg2 <- list(kernel=c("linear","polynomial","radial","sigmoid"), cost=seq(5, 15, 0.5))
-svmt <- tune(svm, factor(Number) ~ .,data=heart_train, ranges = rg2)
-svmt
-```
-
-The finer grid identified an optimal C of 5.5.
+Though these methods produce very similar results, ordinal regression has the worst test MSE and extreme values in the residual plot.  
 
 
-## Testing on the Holdout Set
-
-```{r}
-svm.tuned <- svm(factor(Number) ~ ., kernel = "linear", cost = 5.5, data=heart_train)
-yhat = predict(svm.tuned, newdata = heart_test[,1:13])
-class <- data.frame(yhat = yhat,y = heart_test$Number)
-table(class)
-```
-
-```{r}
-pred <- prediction(as.numeric(yhat==1),as.numeric(heart_test$Number==1))
-perf <- performance(pred,"auc")@y.values
-perf
-```
-
-Summary Statistics:
-Total error rate = 17.2%
-AUC: 0.844
-
-Through both the total error rate and the Area Under the Curve score, we can see that the SVM classifier is doing an okay job correctly identifying test set patients' heart disease status.  However, there are more false negatives in the dataset than false positives, and this is not the kind of classifier you want in a disease-detection setting. Below I will compare the results to a simple logistic regression model.
-
-```{r}
-log.model <- glm(factor(Number) ~ ., data=heart_train, family = "binomial")
-yhat = predict(log.model, newdata= heart_test[,1:13], type = "response")
-class <- data.frame(yhat = as.numeric(yhat > 0.5),y = heart_test$Number)
-table(class)
-```
-
-The logistic regression model has exactly the same distribution of predictions as the SVM model, which makes sense given the explanation of the two methods' relationship to each other detailed in the textbook.

@@ -2,25 +2,29 @@
 title: "Heart Disease Classification"
 author: "Liam Spoletini"
 date: "8/10/2022"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
-# 1 Overview
+## 1 Overview
 
 ### Dataset  
 Name: **Heart Disease Data set**  
 
-Response Variable:  
-**Angiographic disease status**:  
+**Response Variable**:  
+Angiographic Disease Status:  
 0: <50% diameter narrowing  
 1: >50% diameter narrowing  
 
-Predictor Variables (13 total):  
-Categorical:  
+**Predictor Variables** (13 total):  
+
+*Categorical:*
+
 1. Sex  
 0 = female  
 1 = male  
-
+  
 2. Chest Pain Type (cp)  
 1 = typical angina 
 2 = atypical angina 
@@ -50,7 +54,7 @@ Categorical:
 6 = fixed defect  
 7 = reversible defect   
 
-Quantitative
+*Quantitative*
 
 1. Age  
 2. resting blood pressure (in mm Hg on admission to the hospital) (trestbps)  
@@ -199,14 +203,14 @@ The Cross-Validation scores show that out-of-sample sensitivity scores range fro
 
 "
 1. Use recursive binary splitting to grow a large tree on the training data, stopping only when each terminal node has fewer than some minimum number of observations.
-2. Apply cost complexity pruning to the large tree in order to obtain a sequence of best subtrees, as a function of α.
-3. Use K-fold cross-validation to choose α. That is, divide the training observations into K folds. For each k = 1, . . . , K:
+2. Apply cost complexity pruning to the large tree in order to obtain a sequence of best subtrees, as a function of alpha.
+3. Use K-fold cross-validation to choose alpha. That is, divide the training observations into K folds. For each k = 1, . . . , K:
 (a) Repeat Steps 1 and 2 on all but the kth fold of the training data. (b) Evaluate the mean squared prediction error on the data in the
-left-out kth fold, as a function of α.
-Average the results for each value of α, and pick α to minimize the
+left-out kth fold, as a function of alpha.
+Average the results for each value of alpha, and pick alpha to minimize the
 average error.
 4. Return the subtree from Step 2 that corresponds to the chosen value
-of α.
+of alpha.
 "
 *"An Introduction to Statistical Learning with Applications in R."*    
 Gareth James • Daniela Witten • Trevor Hastie • Robert Tibshirani

@@ -12,6 +12,10 @@ suppressPackageStartupMessages(library(ROCR))
 suppressPackageStartupMessages(library(brant))
 suppressPackageStartupMessages(library(VGAM))
 suppressPackageStartupMessages(library(nnet))
+suppressPackageStartupMessages(library(caret))
+suppressPackageStartupMessages(library(randomForest))
+suppressPackageStartupMessages(library(MetBrewer))
+
 
 
 

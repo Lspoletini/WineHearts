@@ -1,13 +1,11 @@
 ---
-title: "Heart Disease"
+title: "Heart Disease Classification"
 author: "Liam Spoletini"
 date: "8/10/2022"
 output: html_document
 ---
 
-# Heart Disease Classification
-
-## Overview
+# 1 Overview
 
 ### Dataset  
 Name: **Heart Disease Data set**  
@@ -61,7 +59,11 @@ Quantitative
 5. ST depression induced by exercise relative to rest (oldpeak)  
 6. Number of major vessels (0-3) colored by flourosopy (ca)  
 
-## Missing Data
+### Setup
+```{r warning=FALSE}
+source(here::here("R", "Setup.R")) # See Setup.R for details
+```
+### Missing Data
 ```{r warning=FALSE}
 
 heart_data %>% 
@@ -88,82 +90,155 @@ heart_train = heart_data[-Z,]
 
 ```{r}
 ggplot(heart_train) + 
-  geom_point(aes(x= thalach, y = chol, color=factor(Number)))
+  geom_point(aes(x= thalach, y = chol, color=factor(Number))) +
+  scale_color_manual(values = met.brewer("Austria", 2),
+                     labels = c("<50% diameter narrowing",">50% diameter   narrowing(Positive)"), 
+                       name = "Angiographic Disease Status")
+
+  
 ```
 ```{r}
 ggplot(heart_train) + 
-  geom_point(aes(x= trestbps, y = chol, color=factor(Number)))
+  geom_point(aes(x= trestbps, y = chol, color=factor(Number))) + 
+  scale_color_manual(values = met.brewer("Austria", 2),
+                     labels = c("<50% diameter narrowing",">50% diameter   narrowing(Positive)"), 
+                       name = "Angiographic Disease Status")
 ```
 
 ```{r}
 ggplot(heart_train) + 
-  geom_point(aes(x= thalach, y = trestbps, color=factor(Number)))
+  geom_point(aes(x= thalach, y = trestbps, color=factor(Number))) + 
+  scale_color_manual(values = met.brewer("Austria", 2),
+                     labels = c("<50% diameter narrowing",">50% diameter   narrowing(Positive)"), 
+                       name = "Angiographic Disease Status")
 ```
 The data do not seem to be easily separable when looking at a low number of predictor variables.  Above are a subset of three such combinations of quantitative variables. It is possible that the data is still closer to linearly separable using more of the predictor variables at a time.  
 
-## Machine Learning Methods: **Support Vector Machine**
+## Machine Learning Method: **Support Vector Machine**
 
-### Formal Representation of Method:
+### Formal Representation of SVM:
 
 Support Vector Machine classifiers rely on the idea of a hyperplane that divides the p-dimensional feature space.  This hyperplane is chosen to maximize the margin (the distance between the hyperplane and the training instances in the feature space).  In the case of Support Vector Machines, this hyperplane contains soft margins, and the cost function to be minimzed is a sum of all the violations of the soft margins.  The maximum sum of the cost function itself is a value that can be tuned to produce stricter or more lenient boundaries. 
 
-### Assumptions/Considerations
+### Assumptions/Considerations of SVM
 
-The textbook doesn't mention any assumptions made about the data that are necessary for SVM.
+SVM makes no assumptions about the data.
 
-## Tuning Parameter
+### Tuning Parameter
 
 The tuning parameter for Support Vector Machines is C, which is the maximum allowed sum of violations to the margin.  A lower value of C allows for fewer violations, and a higher value of C allows for more violations.  The type of kernel is another way we can tune the model.  If we transform the original data using a kernel, the SVM can create a boundary that is linear in the new feature space but nonlinear in the original feature space.  
 
-## Implementation: SVM
+### Implementation: SVM
 
 Finding the optimal kernel and C combination:
 
 Using 10-fold Cross-Validation on the training set
 ```{r}
-set.seed(42)
+
 rg <- list(kernel=c("linear","polynomial","radial","sigmoid"), cost=c(0.001, 0.01, 0.1, 1, 5, 10, 100))
+set.seed(42)
 svmt <- tune(svm, factor(Number) ~ .,data=heart_train, ranges = rg)
-svmt
+svmt$best.model
 ```
+```{r}
+1 -svmt$best.performance
+```
+The training set classification accuracy is 85.56%.
 
-The optimal C in this grid was 10, with a linear kernel.
+**Testing on the Holdout Set:**
+```{r}
+confusionMatrix(reference = factor(heart_test$Number), 
+                 data = predict(svmt$best.model, newdata = heart_test),
+                positive = "1")
+```
+A SVM with a linear kernel and a C of 0.01 returned the best performance, which in this case is the classification error.  There is a significant mismatch between Sensitivity and Specificity, however, in the context of preventative medicine, we are far more interested in a test's sensitivity to the disease state.  Let's see if this improves with a finer-combed grid-search.  
 
 ```{r}
-rg2 <- list(kernel=c("linear","polynomial","radial","sigmoid"), cost=seq(5, 15, 0.5))
+rg2 <- list(kernel=c("linear","polynomial","radial","sigmoid"), cost=10^seq(-3, -1, length.out=10))
+set.seed(42)
 svmt <- tune(svm, factor(Number) ~ .,data=heart_train, ranges = rg2)
-svmt
+svmt$best.model
+```
+**Testing on the Holdout Set:**
+```{r}
+confusionMatrix(reference = factor(heart_test$Number), 
+                 data = predict(svmt$best.model, newdata = heart_test),
+                positive = "1")
 ```
 
-The finer grid identified an optimal C of 5.5.
-
-
-## Testing on the Holdout Set
+The algorithm selected the C parameter closest to 0.01 in the higher precision grid search, and the confusion matrix is identical to the previous result.  We can look at the cross-validation scores of the training set to get a sense of the variability of this result for this combination of C and kernel type
 
 ```{r}
-svm.tuned <- svm(factor(Number) ~ ., kernel = "linear", cost = 5.5, data=heart_train)
-yhat = predict(svm.tuned, newdata = heart_test[,1:13])
-class <- data.frame(yhat = yhat,y = heart_test$Number)
-table(class)
+set.seed(42)
+folds = createFolds(factor(heart_data$Number), k = 10)
+cv = lapply(folds, function(x) { # start of function
+  training_fold = heart_data[-x, ]
+  test_fold = heart_data[x, ] 
+  classifier = svm(formula = factor(Number) ~ .,
+                   data = training_fold,
+                   type = 'C-classification',
+                   kernel = 'linear',
+                   C = 0.0129)
+  y_pred = predict(classifier, newdata = test_fold)
+  cm = table(factor(test_fold$Number), y_pred)
+  accuracy = (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] + cm[1,2] + cm[2,1])
+  sensitivity = cm[2,2] / (cm[2,2] + cm[2,1])
+  return(t(data.frame(accuracy, sensitivity)))
+})
+
+# Credit to: https://rpubs.com/markloessi/506713
+
+t(data.frame(cv))
 ```
+The Cross-Validation scores show that out-of-sample sensitivity scores range from 64% to 100%, which is far too variable for the context of medical screening in my opinion.
+
+
+## Machine Learning Method: **Random Forest**
+
+### Formal Representation (Decision Trees)
+
+"
+1. Use recursive binary splitting to grow a large tree on the training data, stopping only when each terminal node has fewer than some minimum number of observations.
+2. Apply cost complexity pruning to the large tree in order to obtain a sequence of best subtrees, as a function of α.
+3. Use K-fold cross-validation to choose α. That is, divide the training observations into K folds. For each k = 1, . . . , K:
+(a) Repeat Steps 1 and 2 on all but the kth fold of the training data. (b) Evaluate the mean squared prediction error on the data in the
+left-out kth fold, as a function of α.
+Average the results for each value of α, and pick α to minimize the
+average error.
+4. Return the subtree from Step 2 that corresponds to the chosen value
+of α.
+"
+*"An Introduction to Statistical Learning with Applications in R."*    
+Gareth James • Daniela Witten • Trevor Hastie • Robert Tibshirani
+
+### Assumptions/Considerations (Decision Trees)
+Decision trees make no assumptions about the structure of the data or residuals.
+
+### Tuning Parameter
+In the case of decision trees, the number of leaf nodes or number of splits can be controlled to reduce cross-valdiation, or a large tree can be *pruned* back to a more conservative tree.
+
+### Introduction (Random Forest)
+
+Random forests are ensemble learning models that are created by constructing a number of bagged bootstrapped datasets that yield an equal number of bagged decision trees.  To discourage correlation between the trees, an additional constraint is introduced: at each split of each decision tree, the algorithm is only allowed to consider m (m < p) of the available predictors. m is usually set around the square root of the number of predictors, p, for the classification setting.
+
+### Tuning of Random Forest Algorithms
+
+There are other parameters that influence Random Forests, but two of the most influential are the number of trees, ntrees, and m, the number of predictors to consider at each split.
 
 ```{r}
-pred <- prediction(as.numeric(yhat==1),as.numeric(heart_test$Number==1))
-perf <- performance(pred,"auc")@y.values
-perf
+
+rg = list(ntrees = c(50, 100,500,1000,10000), mtry = c(2, 3, 4, 5, 6, 7))
+randomForest(factor(Number) ~ ., data=heart_data)
+set.seed(42)
+tuned.rf <- tune(randomForest, factor(Number) ~ ., data=heart_data, ranges = rg)
+rf_heart <- tuned.rf$best.model
+rf_heart
 ```
 
-Summary Statistics:
-Total error rate = 17.2%
-AUC: 0.844
+An advantage of the Random Forest technique is that you can get a reliable out of sample prediction rate by averaging the prediction accuracy for each observation using only the trees in which the observation was not selected (Out-of-Bag/OOB estimate of error rate).  The overall classification rate here is 81.94%, and the sensitivity is 76%.  I am more inclined to believe this is an acccurate representation of performance than I am with the SVM because each predicition is based on around a third of the total observations, as opposed to a smaller subset.
 
-Through both the total error rate and the Area Under the Curve score, we can see that the SVM classifier is doing an okay job correctly identifying test set patients' heart disease status.  However, there are more false negatives in the dataset than false positives, and this is not the kind of classifier you want in a disease-detection setting. Below I will compare the results to a simple logistic regression model.
+## Conclusion
+I would not recommend using either of these models in a clinical setting, due to the low sensitivity of the test.  It is possible that with a larger dataset, this model would approach something resembling clinical usefulness.
 
-```{r}
-log.model <- glm(factor(Number) ~ ., data=heart_train, family = "binomial")
-yhat = predict(log.model, newdata= heart_test[,1:13], type = "response")
-class <- data.frame(yhat = as.numeric(yhat > 0.5),y = heart_test$Number)
-table(class)
-```
 
-The logistic regression model has exactly the same distribution of predictions as the SVM model, which makes sense given the explanation of the two methods' relationship to each other detailed in the textbook.
+

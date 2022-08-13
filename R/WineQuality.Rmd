@@ -2,17 +2,17 @@
 title: "Wine Quality"
 author: "Liam Spoletini"
 date: "6/8/2022"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
-# Part 1: Wine
-
 ## Overview
 Dataset Name: **Wine Quality**
 
 Response Variable: **Quality** (Scale of 1-10, actual range of 3-8)
 
 Predictor Variables:
-1. fixed acidity       ØØ
+1. fixed acidity       
 2. volatile acidity    
 3. citric acid         
 4. residual sugar      
@@ -355,5 +355,4 @@ results
 ## Conclusion
 
 Though these methods produce very similar results, ordinal regression has the worst test MSE and extreme values in the residual plot.  
-
 
